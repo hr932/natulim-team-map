@@ -401,7 +401,15 @@ let pinRegistry = [];
 // crece y el desplazamiento aplicado se reduce o desaparece por sí solo.
 function declump(points){
   const iterations = 40;
-  const pad = 5;
+  const pad = 4;
+  // Cada pin puede alejarse de su posición geográfica real como máximo su
+  // propio radio (más un pequeño extra). Así, cuando hay muchos pines juntos
+  // (p.ej. Europa vista desde lejos), se separan lo posible sin llegar a
+  // perder la forma real del mapa: si no hay espacio suficiente, se quedan
+  // tocándose en vez de reorganizarse en una cuadrícula artificial. Para
+  // verlos del todo separados, basta con acercar el zoom.
+  const maxDispFactor = 0.9;
+  points.forEach(p => { p.ox = p.x; p.oy = p.y; });
   for(let iter=0; iter<iterations; iter++){
     let moved = false;
     for(let i=0;i<points.length;i++){
@@ -422,6 +430,18 @@ function declump(points){
           a.x -= ux*push; a.y -= uy*push;
           b.x += ux*push; b.y += uy*push;
         }
+      }
+    }
+    // Limita cuánto se puede haber alejado cada pin de su posición real
+    for(let k=0;k<points.length;k++){
+      const p = points[k];
+      const dx = p.x - p.ox, dy = p.y - p.oy;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      const maxDisp = (p.size/2) * maxDispFactor;
+      if(dist > maxDisp){
+        const s = maxDisp/dist;
+        p.x = p.ox + dx*s;
+        p.y = p.oy + dy*s;
       }
     }
     if(!moved) break;
